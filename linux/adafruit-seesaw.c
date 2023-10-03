@@ -86,8 +86,10 @@ static int seesaw_probe(struct i2c_client *client)
 					(unsigned char)(BUTTON_MASK >> 8),
 					(unsigned char)BUTTON_MASK };
 		i2c_master_send(client, buf, 6);
+		mdelay(10);
 		buf[1] = SEESAW_GPIO_PULLENSET;
 		i2c_master_send(client, buf, 6);
+		mdelay(10);
 		buf[1] = SEESAW_GPIO_BULK_SET;
 		i2c_master_send(client, buf, 6);
 		mdelay(10);
@@ -151,7 +153,7 @@ static int seesaw_probe(struct i2c_client *client)
 			y = 1023 - read_value;
 			mdelay(10);
 		}
-		printk("X: %d, Y: %d\n", x , y);
+		printk("X: %d, Y: %d\n", x, y);
 		mdelay(100);
 	}
 	return 0;
