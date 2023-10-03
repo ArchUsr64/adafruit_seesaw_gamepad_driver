@@ -30,6 +30,10 @@
 #define BUTTON_SELECT 0
 #define BUTTON_START 16
 
+// Gamepad Analog Stick pin map
+#define ANALOG_X 14
+#define ANALOG_Y 15
+
 // Bit-mask for getting the values for GPIO pins
 u32 BUTTON_MASK = (1UL << BUTTON_X) | (1UL << BUTTON_Y) |
 		  (1UL << BUTTON_START) | (1UL << BUTTON_A) |
@@ -89,8 +93,8 @@ static int seesaw_probe(struct i2c_client *client)
 		mdelay(10);
 	}
 
-	// Read Buttons
 	for (int i = 0; i < 100; i++) {
+		// Read Buttons
 		unsigned char buf[] = { SEESAW_GPIO_BASE, SEESAW_GPIO_BULK };
 		i2c_master_send(client, buf, 2);
 		mdelay(10);
@@ -117,6 +121,37 @@ static int seesaw_probe(struct i2c_client *client)
 		if (!(result & (1UL << BUTTON_START))) {
 			pr_info("Pressed button Start\n");
 		}
+		mdelay(10);
+
+		int x, y;
+		// Read Analog Stick X
+		{
+			char buf[] = { SEESAW_ADC_BASE,
+				       SEESAW_ADC_OFFSET + ANALOG_X };
+			i2c_master_send(client, buf, 2);
+			mdelay(10);
+			// Potential Endianness issue here
+			u16 read_value;
+			// Device expects a big endian value
+			i2c_master_recv(client, (char *)&read_value, 2);
+			read_value = (read_value >> 8) | (read_value << 8);
+			x = 1023 - read_value;
+			mdelay(10);
+		}
+		// Read Analog Stick Y
+		{
+			char buf[] = { SEESAW_ADC_BASE,
+				       SEESAW_ADC_OFFSET + ANALOG_Y };
+			i2c_master_send(client, buf, 2);
+			mdelay(10);
+			// Potential Endianness issue here
+			u16 read_value;
+			i2c_master_recv(client, (char *)&read_value, 2);
+			read_value = (read_value >> 8) | (read_value << 8);
+			y = 1023 - read_value;
+			mdelay(10);
+		}
+		printk("X: %d, Y: %d\n", x , y);
 		mdelay(100);
 	}
 	return 0;
