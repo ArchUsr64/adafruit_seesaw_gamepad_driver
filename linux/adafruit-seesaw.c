@@ -2,17 +2,51 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 
-#define DEVICE_NAME "Adafruit Seesaw"
-#define DEVICE_I2C_ADDRESS 0x50
+#define SEESAW_DEVICE_NAME "Adafruit Seesaw"
+
+// Base registers
+#define SEESAW_STATUS_BASE 0
+#define SEESAW_GPIO_BASE 1
+#define SEESAW_ADC_BASE 9
+
+// GPIO module function address registers
+#define SEESAW_GPIO_DIRCLR_BULK 3
+#define SEESAW_GPIO_BULK 4
+#define SEESAW_GPIO_BULK_SET 5
+#define SEESAW_GPIO_PULLENSET 11
+
+// Status module function address registers
+#define SEESAW_STATUS_HW_ID 1
+#define SEESAW_STATUS_SWRST 127
+
+// ADC module function address registers
+#define SEESAW_ADC_OFFSET 7
+
+// Gamepad buttons to GPIO pin map
+#define BUTTON_X 6
+#define BUTTON_Y 2
+#define BUTTON_A 5
+#define BUTTON_B 1
+#define BUTTON_SELECT 0
+#define BUTTON_START 16
+
+// Bit-mask for getting the values for GPIO pins
+u32 BUTTON_MASK = (1UL << BUTTON_X) | (1UL << BUTTON_Y) |
+		  (1UL << BUTTON_START) | (1UL << BUTTON_A) |
+		  (1UL << BUTTON_B) | (1UL << BUTTON_SELECT);
+
+#define SEESAW_I2C_ADDRESS 0x50
+
 #define I2C_AVAILABLE_BUS 1
 
 static struct i2c_adapter *adapter = NULL;
 static struct i2c_client *seesaw = NULL;
-static const struct i2c_device_id seesaw_id[] = { { DEVICE_NAME, 0 }, {} };
+static const struct i2c_device_id seesaw_id[] = { { SEESAW_DEVICE_NAME, 0 },
+						  {} };
 MODULE_DEVICE_TABLE(i2c, seesaw_id);
 
 static struct i2c_board_info seesaw_info = { I2C_BOARD_INFO(
-	DEVICE_NAME, DEVICE_I2C_ADDRESS) };
+	SEESAW_DEVICE_NAME, SEESAW_I2C_ADDRESS) };
 
 static unsigned char read(struct i2c_client *client)
 {
@@ -25,16 +59,66 @@ static unsigned char read(struct i2c_client *client)
 static int seesaw_probe(struct i2c_client *client)
 {
 	// Software reset the registers
-	unsigned char buf[] = { 0x00, 0x7F, 0xFF };
-	i2c_master_send(client, buf, 3);
-	mdelay(10);
+	{
+		unsigned char buf[] = { 0x00, 0x7F, 0xFF };
+		i2c_master_send(client, buf, 3);
+		mdelay(10);
+	}
 
 	// Get hardware ID
-	unsigned char buf2[] = { 0x00, 0x01 };
-	i2c_master_send(client, buf2, 2);
-	pr_info("Read HWID: %02x\n", read(client));
-	mdelay(10);
+	{
+		unsigned char buf[] = { 0x00, 0x01 };
+		i2c_master_send(client, buf, 2);
+		pr_info("Read HWID: %02x\n", read(client));
+		mdelay(10);
+	}
 
+	// Set Pin Mode to PULLUP
+	{
+		unsigned char buf[] = { SEESAW_GPIO_BASE,
+					SEESAW_GPIO_DIRCLR_BULK,
+					(unsigned char)(BUTTON_MASK >> 24),
+					(unsigned char)(BUTTON_MASK >> 16),
+					(unsigned char)(BUTTON_MASK >> 8),
+					(unsigned char)BUTTON_MASK };
+		i2c_master_send(client, buf, 6);
+		buf[1] = SEESAW_GPIO_PULLENSET;
+		i2c_master_send(client, buf, 6);
+		buf[1] = SEESAW_GPIO_BULK_SET;
+		i2c_master_send(client, buf, 6);
+		mdelay(10);
+	}
+
+	// Read Buttons
+	for (int i = 0; i < 100; i++) {
+		unsigned char buf[] = { SEESAW_GPIO_BASE, SEESAW_GPIO_BULK };
+		i2c_master_send(client, buf, 2);
+		mdelay(10);
+		unsigned char read_buf[4];
+		i2c_master_recv(client, read_buf, 4);
+		u32 result = ((u32)read_buf[0] << 24) |
+			     ((u32)read_buf[1] << 16) |
+			     ((u32)read_buf[2] << 8) | (u32)read_buf[3];
+		if (!(result & (1UL << BUTTON_A))) {
+			pr_info("Pressed button A\n");
+		}
+		if (!(result & (1UL << BUTTON_B))) {
+			pr_info("Pressed button B\n");
+		}
+		if (!(result & (1UL << BUTTON_X))) {
+			pr_info("Pressed button X\n");
+		}
+		if (!(result & (1UL << BUTTON_Y))) {
+			pr_info("Pressed button Y\n");
+		}
+		if (!(result & (1UL << BUTTON_SELECT))) {
+			pr_info("Pressed button Select\n");
+		}
+		if (!(result & (1UL << BUTTON_START))) {
+			pr_info("Pressed button Start\n");
+		}
+		mdelay(100);
+	}
 	return 0;
 }
 
@@ -45,7 +129,7 @@ static void seesaw_remove(struct i2c_client *client)
 
 static struct i2c_driver seesaw_driver = {
 	.driver = {
-	.name = DEVICE_NAME,
+	.name = SEESAW_DEVICE_NAME,
 	.owner = THIS_MODULE,
 },
 // For testing with the Raspberry Pi on kernel v6.1
