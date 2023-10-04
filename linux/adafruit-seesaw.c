@@ -57,8 +57,8 @@ struct seesaw_gamepad {
 };
 
 struct seesaw_data {
-	__be16 x;
-	__be16 y;
+	__le16 x;
+	__le16 y;
 	u8 button_a, button_b, button_x, button_y, button_start, button_select;
 };
 
@@ -121,8 +121,8 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return -EIO;
 		}
 		read_value = (read_value >> 8) | (read_value << 8);
-		data->x = read_value;
 		x = 1023 - read_value;
+		data->x = x;
 	}
 	// Read Analog Stick Y
 	{
@@ -148,8 +148,8 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return -EIO;
 		}
 		read_value = (read_value >> 8) | (read_value << 8);
-		data->y = read_value;
 		y = 1023 - read_value;
+		data->y = y;
 	}
 	printk("X: %d, Y: %d\n", x, y);
 	return 0;
