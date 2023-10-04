@@ -2,6 +2,7 @@
 *.mod*
 *.ko
 *.o
+*.dtbo
 modules.order
 Module.symvers
 !.gitignore
