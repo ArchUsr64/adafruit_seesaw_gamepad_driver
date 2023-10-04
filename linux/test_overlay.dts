@@ -1,0 +1,20 @@
+/dts-v1/;
+/plugin/;
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			seesaw_gamepad: seesaw_gamepad@50 {
+				compatible = "adafruit,seesaw_gamepad";
+				reg = <0x50>;
+				status = "okay";
+			};
+		};
+	};
+};
+// Reference: https://www.youtube.com/watch?v=GQ1XwFWA2Nw
