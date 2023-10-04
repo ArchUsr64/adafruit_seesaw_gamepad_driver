@@ -1,7 +1,6 @@
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/i2c.h>
-#include <linux/delay.h>
 
 #define SEESAW_DEVICE_NAME "seesaw_gamepad"
 
@@ -77,7 +76,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 		pr_info("Buffer not fully written\n");
 		return -EIO;
 	}
-	mdelay(10);
 	unsigned char read_buf[4];
 	err = i2c_master_recv(client, read_buf, 4);
 	if (err < 0) {
@@ -96,7 +94,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 	data->button_y = !(result & (1UL << BUTTON_Y));
 	data->button_start = !(result & (1UL << BUTTON_START));
 	data->button_select = !(result & (1UL << BUTTON_SELECT));
-	mdelay(10);
 
 	int x, y;
 	// Read Analog Stick X
@@ -111,7 +108,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			pr_info("Buffer not fully written\n");
 			return -EIO;
 		}
-		mdelay(10);
 		// Potential Endianness issue here
 		u16 read_value;
 		// Device expects a big endian value
@@ -127,7 +123,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 		read_value = (read_value >> 8) | (read_value << 8);
 		data->x = read_value;
 		x = 1023 - read_value;
-		mdelay(10);
 	}
 	// Read Analog Stick Y
 	{
@@ -141,7 +136,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			pr_info("Buffer not fully written\n");
 			return -EIO;
 		}
-		mdelay(10);
 		// Potential Endianness issue here
 		u16 read_value;
 		err = i2c_master_recv(client, (char *)&read_value, 2);
@@ -156,7 +150,6 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 		read_value = (read_value >> 8) | (read_value << 8);
 		data->y = read_value;
 		y = 1023 - read_value;
-		mdelay(10);
 	}
 	printk("X: %d, Y: %d\n", x, y);
 	return 0;
@@ -207,7 +200,6 @@ static int seesaw_probe(struct i2c_client *client)
 			pr_info("Buffer not fully written\n");
 			return -EIO;
 		}
-		mdelay(10);
 	}
 
 	private = devm_kzalloc(&client->dev, sizeof(*private), GFP_KERNEL);
@@ -223,7 +215,6 @@ static int seesaw_probe(struct i2c_client *client)
 		err = i2c_master_send(client, buf, 2);
 		i2c_master_recv(client, &private->hardware_id, 1);
 		pr_info("Read HWID: %02x\n", private->hardware_id);
-		mdelay(10);
 	}
 
 	dev_dbg(&client->dev, "Adafruit Seesaw Gamepad, Hardware ID: %02x\n",
@@ -284,13 +275,10 @@ static int seesaw_probe(struct i2c_client *client)
 					(unsigned char)(BUTTON_MASK >> 8),
 					(unsigned char)BUTTON_MASK };
 		i2c_master_send(client, buf, 6);
-		mdelay(10);
 		buf[1] = SEESAW_GPIO_PULLENSET;
 		i2c_master_send(client, buf, 6);
-		mdelay(10);
 		buf[1] = SEESAW_GPIO_BULK_SET;
 		i2c_master_send(client, buf, 6);
-		mdelay(10);
 	}
 
 	return 0;
