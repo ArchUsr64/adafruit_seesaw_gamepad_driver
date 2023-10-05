@@ -1,3 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2023 Anshul Dalal <anshulusr@gmail.com>
+ *
+ * SparkFun Qwiic Joystick
+ * Product page: https://www.adafruit.com/product/5743
+ * Firmware and hardware sources: https://github.com/adafruit/Adafruit_Seesaw
+ * Standalone driver: https://github.com/ArchUsr64/adafruit_seesaw_gamepad_driver
+ */
+
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/i2c.h>
@@ -145,7 +155,6 @@ static void seesaw_poll(struct input_dev *input)
 	input_sync(input);
 }
 
-// Called once the device has been found on the i2c adapter
 static int seesaw_probe(struct i2c_client *client)
 {
 	struct seesaw_gamepad *private;
@@ -273,4 +282,6 @@ static struct i2c_driver seesaw_driver = {
 };
 module_i2c_driver(seesaw_driver);
 
+MODULE_AUTHOR("Anshul Dalal <anshulusr@gmail.com>");
+MODULE_DESCRIPTION("Adafruit Mini I2C Gamepad driver");
 MODULE_LICENSE("GPL v2");
