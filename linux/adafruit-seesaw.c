@@ -58,8 +58,6 @@ u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
 #define SEESAW_GAMEPAD_POLL_MIN 8
 #define SEESAW_GAMEPAD_POLL_MAX 32
 
-#define SEESAW_I2C_ADDRESS 0x50
-
 struct seesaw_gamepad {
 	char physical_path[32];
 	unsigned char hardware_id;
@@ -158,8 +156,6 @@ static int seesaw_probe(struct i2c_client *client)
 	struct seesaw_gamepad *private;
 	int err;
 
-	if (client->addr != SEESAW_I2C_ADDRESS)
-		return -EIO;
 	// Software reset the registers
 	{
 		unsigned char buf[] = { SEESAW_STATUS_BASE, SEESAW_STATUS_SWRST,
