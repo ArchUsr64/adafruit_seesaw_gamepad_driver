@@ -8,10 +8,11 @@
  * Standalone driver: https://github.com/ArchUsr64/adafruit_seesaw_gamepad_driver
  */
 
-#include <linux/module.h>
-#include <linux/input.h>
-#include <linux/i2c.h>
 #include <linux/bits.h>
+#include <linux/i2c.h>
+#include <linux/input.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 
 #define SEESAW_DEVICE_NAME "seesaw_gamepad"
 
