@@ -76,6 +76,7 @@ struct seesaw_data {
 static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 {
 	int err;
+
 	// Read Buttons
 	unsigned char buf[2] = { SEESAW_GPIO_BASE, SEESAW_GPIO_BULK };
 	err = i2c_master_send(client, buf, 2);
@@ -107,12 +108,12 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return err;
 		if (err != sizeof(buf))
 			return -EIO;
-		err = i2c_master_recv(client, (char*)&data->x, 2);
+		err = i2c_master_recv(client, (char *)&data->x, 2);
 		if (err < 0)
 			return err;
 		if (err != 2)
 			return -EIO;
-		data->x = SEESAW_JOYSTICK_MAX_AXIS  - be16_to_cpu(data->x);
+		data->x = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->x);
 	}
 	buf[1] = SEESAW_ADC_OFFSET + ANALOG_Y;
 	// Read Analog Stick Y
@@ -122,15 +123,14 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return err;
 		if (err != sizeof(buf))
 			return -EIO;
-		err = i2c_master_recv(client, (char*)&data->y, 2);
-		if (err < 0) {
+		err = i2c_master_recv(client, (char *)&data->y, 2);
+		if (err < 0)
 			return err;
-		}
-		if (err != 2) {
+		if (err != 2)
 			return -EIO;
-		}
 		data->y = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->y);
 	}
+
 	return 0;
 }
 
@@ -182,7 +182,15 @@ static int seesaw_probe(struct i2c_client *client)
 		unsigned char buf[] = { SEESAW_STATUS_BASE,
 					SEESAW_STATUS_HW_ID };
 		err = i2c_master_send(client, buf, 2);
-		i2c_master_recv(client, &private->hardware_id, 1);
+		if (err < 0)
+			return err;
+		if (err != sizeof(buf))
+			return -EIO;
+		err = i2c_master_recv(client, &private->hardware_id, 1);
+		if (err < 0)
+			return err;
+		if (err != sizeof(buf))
+			return -EIO;
 	}
 
 	dev_dbg(&client->dev, "Adafruit Seesaw Gamepad, Hardware ID: %02x\n",
@@ -207,10 +215,10 @@ static int seesaw_probe(struct i2c_client *client)
 	input_set_abs_params(private->input_dev, ABS_Y, 0,
 			     SEESAW_JOYSTICK_MAX_AXIS, SEESAW_JOYSTICK_FUZZ,
 			     SEESAW_JOYSTICK_FLAT);
-	input_set_capability(private->input_dev, EV_KEY, BTN_X);
-	input_set_capability(private->input_dev, EV_KEY, BTN_Y);
 	input_set_capability(private->input_dev, EV_KEY, BTN_A);
 	input_set_capability(private->input_dev, EV_KEY, BTN_B);
+	input_set_capability(private->input_dev, EV_KEY, BTN_X);
+	input_set_capability(private->input_dev, EV_KEY, BTN_Y);
 	input_set_capability(private->input_dev, EV_KEY, BTN_START);
 	input_set_capability(private->input_dev, EV_KEY, BTN_SELECT);
 
@@ -233,7 +241,7 @@ static int seesaw_probe(struct i2c_client *client)
 		return err;
 	}
 
-	// Set Pin Mode to PULLUP
+	// Set Pin Mode to Input and enable pull-up resistors
 	{
 		unsigned char buf[] = { SEESAW_GPIO_BASE,
 					SEESAW_GPIO_DIRCLR_BULK,
@@ -241,11 +249,15 @@ static int seesaw_probe(struct i2c_client *client)
 					(unsigned char)(BUTTON_MASK >> 16),
 					(unsigned char)(BUTTON_MASK >> 8),
 					(unsigned char)BUTTON_MASK };
-		i2c_master_send(client, buf, 6);
+		err = i2c_master_send(client, buf, 6);
 		buf[1] = SEESAW_GPIO_PULLENSET;
-		i2c_master_send(client, buf, 6);
+		err |= i2c_master_send(client, buf, 6);
 		buf[1] = SEESAW_GPIO_BULK_SET;
-		i2c_master_send(client, buf, 6);
+		err |= i2c_master_send(client, buf, 6);
+		if (err < 0)
+			return err;
+		if (err != sizeof(buf))
+			return -EIO;
 	}
 
 	return 0;
