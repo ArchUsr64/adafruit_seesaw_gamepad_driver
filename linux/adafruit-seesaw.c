@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/i2c.h>
+#include <linux/bits.h>
 
 #define SEESAW_DEVICE_NAME "seesaw_gamepad"
 
@@ -30,22 +31,22 @@
 #define BUTTON_START 16
 #define BUTTON_SELECT 0
 
+// Bit-mask for getting the values for GPIO pins
+u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
+		  (1UL << BUTTON_Y) | (1UL << BUTTON_START) |
+		  (1UL << BUTTON_SELECT);
+
 // Gamepad Analog Stick pin map
 #define ANALOG_X 14
 #define ANALOG_Y 15
 
 #define SEESAW_JOYSTICK_MAX_AXIS 1023
 #define SEESAW_JOYSTICK_FUZZ 2
-#define SEESAW_JOYSTICK_FLAT 2
+#define SEESAW_JOYSTICK_FLAT 4
 
 #define SEESAW_GAMEPAD_POLL_INTERVAL 16
 #define SEESAW_GAMEPAD_POLL_MIN 8
 #define SEESAW_GAMEPAD_POLL_MAX 32
-
-// Bit-mask for getting the values for GPIO pins
-u32 BUTTON_MASK = (1UL << BUTTON_X) | (1UL << BUTTON_Y) |
-		  (1UL << BUTTON_START) | (1UL << BUTTON_A) |
-		  (1UL << BUTTON_B) | (1UL << BUTTON_SELECT);
 
 #define SEESAW_I2C_ADDRESS 0x50
 
@@ -57,8 +58,8 @@ struct seesaw_gamepad {
 };
 
 struct seesaw_data {
-	__le16 x;
-	__le16 y;
+	__be16 x;
+	__be16 y;
 	u8 button_a, button_b, button_x, button_y, button_start, button_select;
 };
 
@@ -96,37 +97,29 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return err;
 		if (err != sizeof(buf))
 			return -EIO;
-		// Potential Endianness issue here
-		u16 read_value;
-		// Device expects a big endian value
-		err = i2c_master_recv(client, (char *)&read_value, 2);
+		err = i2c_master_recv(client, (char*)&data->x, 2);
 		if (err < 0)
 			return err;
 		if (err != 2)
 			return -EIO;
-		read_value = (read_value >> 8) | (read_value << 8);
-		data->x = 1023 - read_value;
+		data->x = SEESAW_JOYSTICK_MAX_AXIS  - be16_to_cpu(data->x);
 	}
 	buf[1] = SEESAW_ADC_OFFSET + ANALOG_Y;
 	// Read Analog Stick Y
 	{
-		char buf[] = { SEESAW_ADC_BASE, SEESAW_ADC_OFFSET + ANALOG_Y };
 		err = i2c_master_send(client, buf, 2);
 		if (err < 0)
 			return err;
 		if (err != sizeof(buf))
 			return -EIO;
-		// Potential Endianness issue here
-		u16 read_value;
-		err = i2c_master_recv(client, (char *)&read_value, 2);
+		err = i2c_master_recv(client, (char*)&data->y, 2);
 		if (err < 0) {
 			return err;
 		}
 		if (err != 2) {
 			return -EIO;
 		}
-		read_value = (read_value >> 8) | (read_value << 8);
-		data->y = 1023 - read_value;
+		data->y = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->y);
 	}
 	return 0;
 }
@@ -254,14 +247,14 @@ static const struct of_device_id of_seesaw_match[] = {
 	{
 		.compatible = "adafruit,seesaw_gamepad",
 	},
-	{},
+	{ /* Sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, of_seesaw_match);
 #endif /* CONFIG_OF */
 
 static const struct i2c_device_id seesaw_id_table[] = { { SEESAW_DEVICE_NAME,
 							  0 },
-							{} };
+							{ /* Sentinel */ } };
 MODULE_DEVICE_TABLE(i2c, seesaw_id_table);
 
 static struct i2c_driver seesaw_driver = {
