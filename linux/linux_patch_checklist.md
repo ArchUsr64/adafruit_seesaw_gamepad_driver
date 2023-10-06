@@ -1,7 +1,7 @@
 ## TODO
 - [x] Implement Arduino driver
 - [x] Get linux driver working on kernel v6.1
-- [ ] Driver test on latest kernel
+- [x] Driver test on latest kernel
 - [x] Fix formatting for defines
 - [ ] Add documentation at Documentation/devicetree/bindings/adafruit_seesaw.yaml
 - [ ] Add tristate config option to Kconfig

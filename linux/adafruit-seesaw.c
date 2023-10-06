@@ -276,7 +276,7 @@ static const struct of_device_id of_seesaw_match[] = {
 MODULE_DEVICE_TABLE(of, of_seesaw_match);
 #endif /* CONFIG_OF */
 
-static const struct i2c_device_id seesaw_id_table[] = { { SEESAW_DEVICE_NAME,
+static const struct i2c_device_id seesaw_id_table[] = { { KBUILD_MODNAME,
 							  0 },
 							{ /* Sentinel */ } };
 MODULE_DEVICE_TABLE(i2c, seesaw_id_table);
@@ -285,15 +285,9 @@ static struct i2c_driver seesaw_driver = {
 	.driver = {
 		.name = SEESAW_DEVICE_NAME,
 		.of_match_table = of_match_ptr(of_seesaw_match),
-		.owner = THIS_MODULE,
 	},
 	.id_table = seesaw_id_table,
-// For testing with the Raspberry Pi on kernel v6.1
-#ifndef _ARCH_X86_TLBBATCH_H
-	.probe_new	= seesaw_probe,
-#else
 	.probe		= seesaw_probe,
-#endif
 };
 module_i2c_driver(seesaw_driver);
 
