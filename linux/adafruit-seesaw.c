@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (C) 2023 Anshul Dalal <anshulusr@gmail.com>
  *
- * SparkFun Qwiic Joystick
+ * Driver for Adafruit Mini I2C Gamepad
+ *
+ * Based on the work of:
+ *	Oleh Kravchenko (Sparkfun Qwiic Joystick driver)
+ *
  * Product page: https://www.adafruit.com/product/5743
  * Firmware and hardware sources: https://github.com/adafruit/Adafruit_Seesaw
  * Standalone driver: https://github.com/ArchUsr64/adafruit_seesaw_gamepad_driver
