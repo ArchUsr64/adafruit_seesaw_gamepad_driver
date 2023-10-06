@@ -113,8 +113,11 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 			return err;
 		if (err != 2)
 			return -EIO;
+		// ADC reads left as max and right as max, must be reversed
+		// since kernel expects reports in opposite order
 		data->x = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->x);
 	}
+
 	buf[1] = SEESAW_ADC_OFFSET + ANALOG_Y;
 	// Read Analog Stick Y
 	{
@@ -140,9 +143,8 @@ static void seesaw_poll(struct input_dev *input)
 	struct seesaw_data data;
 	int err;
 	err = seesaw_read_data(private->i2c_client, &data);
-	if (err != 0) {
+	if (err != 0)
 		return;
-	}
 
 	input_report_abs(input, ABS_X, data.x);
 	input_report_abs(input, ABS_Y, data.y);
@@ -165,7 +167,7 @@ static int seesaw_probe(struct i2c_client *client)
 	{
 		unsigned char buf[] = { SEESAW_STATUS_BASE, SEESAW_STATUS_SWRST,
 					0xFF };
-		err = i2c_master_send(client, buf, 3);
+		err = i2c_master_send(client, buf, sizeof(buf));
 		if (err < 0)
 			return err;
 		if (err != sizeof(buf))
@@ -182,7 +184,7 @@ static int seesaw_probe(struct i2c_client *client)
 	{
 		unsigned char buf[] = { SEESAW_STATUS_BASE,
 					SEESAW_STATUS_HW_ID };
-		err = i2c_master_send(client, buf, 2);
+		err = i2c_master_send(client, buf, sizeof(buf));
 		if (err < 0)
 			return err;
 		if (err != sizeof(buf))
@@ -190,7 +192,7 @@ static int seesaw_probe(struct i2c_client *client)
 		err = i2c_master_recv(client, &private->hardware_id, 1);
 		if (err < 0)
 			return err;
-		if (err != sizeof(buf))
+		if (err != 1)
 			return -EIO;
 	}
 
@@ -250,11 +252,11 @@ static int seesaw_probe(struct i2c_client *client)
 					(unsigned char)(BUTTON_MASK >> 16),
 					(unsigned char)(BUTTON_MASK >> 8),
 					(unsigned char)BUTTON_MASK };
-		err = i2c_master_send(client, buf, 6);
+		err = i2c_master_send(client, buf, sizeof(buf));
 		buf[1] = SEESAW_GPIO_PULLENSET;
-		err |= i2c_master_send(client, buf, 6);
+		err |= i2c_master_send(client, buf, sizeof(buf));
 		buf[1] = SEESAW_GPIO_BULK_SET;
-		err |= i2c_master_send(client, buf, 6);
+		err |= i2c_master_send(client, buf, sizeof(buf));
 		if (err < 0)
 			return err;
 		if (err != sizeof(buf))
