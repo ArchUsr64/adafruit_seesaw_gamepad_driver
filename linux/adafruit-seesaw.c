@@ -9,6 +9,7 @@
  */
 
 #include <linux/bits.h>
+#include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/kernel.h>
@@ -169,6 +170,8 @@ static int seesaw_probe(struct i2c_client *client)
 			return err;
 		if (err != sizeof(buf))
 			return -EIO;
+		// wait for the chip to reset
+		mdelay(10);
 	}
 
 	private = devm_kzalloc(&client->dev, sizeof(*private), GFP_KERNEL);
