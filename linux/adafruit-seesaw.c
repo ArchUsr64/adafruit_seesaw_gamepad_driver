@@ -15,33 +15,33 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
-#define SEESAW_DEVICE_NAME "seesaw_gamepad"
+#define SEESAW_DEVICE_NAME	"seesaw_gamepad"
 
 // Base registers
-#define SEESAW_STATUS_BASE 0
-#define SEESAW_GPIO_BASE 1
-#define SEESAW_ADC_BASE 9
+#define SEESAW_STATUS_BASE	0
+#define SEESAW_GPIO_BASE	1
+#define SEESAW_ADC_BASE		9
 
 // GPIO module function address registers
-#define SEESAW_GPIO_DIRCLR_BULK 3
-#define SEESAW_GPIO_BULK 4
-#define SEESAW_GPIO_BULK_SET 5
-#define SEESAW_GPIO_PULLENSET 11
+#define SEESAW_GPIO_DIRCLR_BULK	3
+#define SEESAW_GPIO_BULK	4
+#define SEESAW_GPIO_BULK_SET	5
+#define SEESAW_GPIO_PULLENSET	11
 
 // Status module function address registers
-#define SEESAW_STATUS_HW_ID 1
-#define SEESAW_STATUS_SWRST 127
+#define SEESAW_STATUS_HW_ID	1
+#define SEESAW_STATUS_SWRST	127
 
 // ADC module function address registers
-#define SEESAW_ADC_OFFSET 7
+#define SEESAW_ADC_OFFSET	7
 
 // Gamepad buttons to GPIO pin map
-#define BUTTON_A 5
-#define BUTTON_B 1
-#define BUTTON_X 6
-#define BUTTON_Y 2
-#define BUTTON_START 16
-#define BUTTON_SELECT 0
+#define BUTTON_A	5
+#define BUTTON_B	1
+#define BUTTON_X	6
+#define BUTTON_Y	2
+#define BUTTON_START	16
+#define BUTTON_SELECT	0
 
 // Bit-mask for getting the values for GPIO pins
 u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
@@ -49,16 +49,16 @@ u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
 		  (1UL << BUTTON_SELECT);
 
 // Gamepad Analog Stick pin map
-#define ANALOG_X 14
-#define ANALOG_Y 15
+#define ANALOG_X	14
+#define ANALOG_Y	15
 
-#define SEESAW_JOYSTICK_MAX_AXIS 1023
-#define SEESAW_JOYSTICK_FUZZ 2
-#define SEESAW_JOYSTICK_FLAT 4
+#define SEESAW_JOYSTICK_MAX_AXIS	1023
+#define SEESAW_JOYSTICK_FUZZ		2
+#define SEESAW_JOYSTICK_FLAT		4
 
-#define SEESAW_GAMEPAD_POLL_INTERVAL 16
-#define SEESAW_GAMEPAD_POLL_MIN 8
-#define SEESAW_GAMEPAD_POLL_MAX 32
+#define SEESAW_GAMEPAD_POLL_INTERVAL	16
+#define SEESAW_GAMEPAD_POLL_MIN		8
+#define SEESAW_GAMEPAD_POLL_MAX		32
 
 struct seesaw_gamepad {
 	char physical_path[32];
@@ -142,13 +142,13 @@ static void seesaw_poll(struct input_dev *input)
 	struct seesaw_gamepad *private = input_get_drvdata(input);
 	struct seesaw_data data;
 	int err;
+
 	err = seesaw_read_data(private->i2c_client, &data);
 	if (err != 0)
 		return;
 
 	input_report_abs(input, ABS_X, data.x);
 	input_report_abs(input, ABS_Y, data.y);
-
 	input_report_key(input, BTN_A, data.button_a);
 	input_report_key(input, BTN_B, data.button_b);
 	input_report_key(input, BTN_X, data.button_x);
