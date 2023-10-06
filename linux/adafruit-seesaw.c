@@ -143,6 +143,9 @@ static void seesaw_poll(struct input_dev *input)
 		return;
 	}
 
+	input_report_abs(input, ABS_X, data.x);
+	input_report_abs(input, ABS_Y, data.y);
+
 	input_report_key(input, BTN_A, data.button_a);
 	input_report_key(input, BTN_B, data.button_b);
 	input_report_key(input, BTN_X, data.button_x);
