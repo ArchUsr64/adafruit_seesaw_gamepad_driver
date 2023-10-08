@@ -3,9 +3,9 @@
 - [x] Get linux driver working on kernel v6.1
 - [x] Driver test on latest kernel
 - [x] Fix formatting for defines
-- [ ] Add documentation at Documentation/devicetree/bindings/adafruit_seesaw.yaml
-- [ ] Add tristate config option to Kconfig
-- [ ] Add build target to Makefile
+- [x] Add bindings at Documentation/devicetree/bindings/input/adafruit_seesaw.yaml
+- [x] Add tristate config option to Kconfig
+- [x] Add build target to Makefile
 
 ## Notes:
 - Split the patch in two, the first one would include compatibles and the second one with the driver code

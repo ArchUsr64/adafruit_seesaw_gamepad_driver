@@ -9,7 +9,6 @@
  *
  * Product page: https://www.adafruit.com/product/5743
  * Firmware and hardware sources: https://github.com/adafruit/Adafruit_Seesaw
- * Standalone driver: https://github.com/ArchUsr64/adafruit_seesaw_gamepad_driver
  */
 
 #include <linux/bits.h>
@@ -19,27 +18,23 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
+/* clang-format off */
 #define SEESAW_DEVICE_NAME	"seesaw_gamepad"
 
-// Base registers
 #define SEESAW_STATUS_BASE	0
 #define SEESAW_GPIO_BASE	1
 #define SEESAW_ADC_BASE		9
 
-// GPIO module function address registers
 #define SEESAW_GPIO_DIRCLR_BULK	3
 #define SEESAW_GPIO_BULK	4
 #define SEESAW_GPIO_BULK_SET	5
 #define SEESAW_GPIO_PULLENSET	11
 
-// Status module function address registers
 #define SEESAW_STATUS_HW_ID	1
 #define SEESAW_STATUS_SWRST	127
 
-// ADC module function address registers
 #define SEESAW_ADC_OFFSET	7
 
-// Gamepad buttons to GPIO pin map
 #define BUTTON_A	5
 #define BUTTON_B	1
 #define BUTTON_X	6
@@ -47,12 +42,6 @@
 #define BUTTON_START	16
 #define BUTTON_SELECT	0
 
-// Bit-mask for getting the values for GPIO pins
-u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
-		  (1UL << BUTTON_Y) | (1UL << BUTTON_START) |
-		  (1UL << BUTTON_SELECT);
-
-// Gamepad Analog Stick pin map
 #define ANALOG_X	14
 #define ANALOG_Y	15
 
@@ -63,6 +52,11 @@ u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
 #define SEESAW_GAMEPAD_POLL_INTERVAL	16
 #define SEESAW_GAMEPAD_POLL_MIN		8
 #define SEESAW_GAMEPAD_POLL_MAX		32
+/* clang-format on */
+
+u32 BUTTON_MASK = (1UL << BUTTON_A) | (1UL << BUTTON_B) | (1UL << BUTTON_X) |
+		  (1UL << BUTTON_Y) | (1UL << BUTTON_START) |
+		  (1UL << BUTTON_SELECT);
 
 struct seesaw_gamepad {
 	char physical_path[32];
@@ -80,16 +74,15 @@ struct seesaw_data {
 static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 {
 	int err;
+	unsigned char write_buf[2] = { SEESAW_GPIO_BASE, SEESAW_GPIO_BULK };
+	unsigned char read_buf[4];
 
-	// Read Buttons
-	unsigned char buf[2] = { SEESAW_GPIO_BASE, SEESAW_GPIO_BULK };
-	err = i2c_master_send(client, buf, 2);
+	err = i2c_master_send(client, write_buf, sizeof(write_buf));
 	if (err < 0)
 		return err;
-	if (err != sizeof(buf))
+	if (err != sizeof(write_buf))
 		return -EIO;
-	unsigned char read_buf[4];
-	err = i2c_master_recv(client, read_buf, 4);
+	err = i2c_master_recv(client, read_buf, sizeof(read_buf));
 	if (err < 0)
 		return err;
 	if (err != sizeof(read_buf))
@@ -103,40 +96,37 @@ static int seesaw_read_data(struct i2c_client *client, struct seesaw_data *data)
 	data->button_start = !(result & (1UL << BUTTON_START));
 	data->button_select = !(result & (1UL << BUTTON_SELECT));
 
-	buf[0] = SEESAW_ADC_BASE;
-	buf[1] = SEESAW_ADC_OFFSET + ANALOG_X;
-	// Read Analog Stick X
-	{
-		err = i2c_master_send(client, buf, 2);
-		if (err < 0)
-			return err;
-		if (err != sizeof(buf))
-			return -EIO;
-		err = i2c_master_recv(client, (char *)&data->x, 2);
-		if (err < 0)
-			return err;
-		if (err != 2)
-			return -EIO;
-		// ADC reads left as max and right as max, must be reversed
-		// since kernel expects reports in opposite order
-		data->x = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->x);
-	}
 
-	buf[1] = SEESAW_ADC_OFFSET + ANALOG_Y;
-	// Read Analog Stick Y
-	{
-		err = i2c_master_send(client, buf, 2);
-		if (err < 0)
-			return err;
-		if (err != sizeof(buf))
-			return -EIO;
-		err = i2c_master_recv(client, (char *)&data->y, 2);
-		if (err < 0)
-			return err;
-		if (err != 2)
-			return -EIO;
-		data->y = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->y);
-	}
+	write_buf[0] = SEESAW_ADC_BASE;
+	write_buf[1] = SEESAW_ADC_OFFSET + ANALOG_X;
+	err = i2c_master_send(client, write_buf, sizeof(write_buf));
+	if (err < 0)
+		return err;
+	if (err != sizeof(write_buf))
+		return -EIO;
+	err = i2c_master_recv(client, (char *)&data->x, sizeof(data->x));
+	if (err < 0)
+		return err;
+	if (err != sizeof(data->x))
+		return -EIO;
+	/*
+	 * ADC reads left as max and right as 0, must be reversed since kernel
+	 * expects reports in opposite order.
+	 */
+	data->x = SEESAW_JOYSTICK_MAX_AXIS - be16_to_cpu(data->x);
+
+	write_buf[1] = SEESAW_ADC_OFFSET + ANALOG_Y;
+	err = i2c_master_send(client, write_buf, sizeof(write_buf));
+	if (err < 0)
+		return err;
+	if (err != sizeof(write_buf))
+		return -EIO;
+	err = i2c_master_recv(client, (char *)&data->y, sizeof(data->y));
+	if (err < 0)
+		return err;
+	if (err != sizeof(data->y))
+		return -EIO;
+	data->y = be16_to_cpu(data->y);
 
 	return 0;
 }
@@ -164,41 +154,33 @@ static void seesaw_poll(struct input_dev *input)
 
 static int seesaw_probe(struct i2c_client *client)
 {
-	struct seesaw_gamepad *private;
 	int err;
+	struct seesaw_gamepad *private;
+	unsigned char register_reset[] = { SEESAW_STATUS_BASE,
+					   SEESAW_STATUS_SWRST, 0xFF };
+	unsigned char get_hw_id[] = { SEESAW_STATUS_BASE, SEESAW_STATUS_HW_ID };
 
-	// Software reset the registers
-	{
-		unsigned char buf[] = { SEESAW_STATUS_BASE, SEESAW_STATUS_SWRST,
-					0xFF };
-		err = i2c_master_send(client, buf, sizeof(buf));
-		if (err < 0)
-			return err;
-		if (err != sizeof(buf))
-			return -EIO;
-		// wait for the chip to reset
-		mdelay(10);
-	}
+	err = i2c_master_send(client, register_reset, sizeof(register_reset));
+	if (err < 0)
+		return err;
+	if (err != sizeof(register_reset))
+		return -EIO;
+	mdelay(10);
 
 	private = devm_kzalloc(&client->dev, sizeof(*private), GFP_KERNEL);
 	if (!private)
 		return -ENOMEM;
 
-	// Get hardware ID
-	{
-		unsigned char buf[] = { SEESAW_STATUS_BASE,
-					SEESAW_STATUS_HW_ID };
-		err = i2c_master_send(client, buf, sizeof(buf));
-		if (err < 0)
-			return err;
-		if (err != sizeof(buf))
-			return -EIO;
-		err = i2c_master_recv(client, &private->hardware_id, 1);
-		if (err < 0)
-			return err;
-		if (err != 1)
-			return -EIO;
-	}
+	err = i2c_master_send(client, get_hw_id, sizeof(get_hw_id));
+	if (err < 0)
+		return err;
+	if (err != sizeof(get_hw_id))
+		return -EIO;
+	err = i2c_master_recv(client, &private->hardware_id, 1);
+	if (err < 0)
+		return err;
+	if (err != 1)
+		return -EIO;
 
 	dev_dbg(&client->dev, "Adafruit Seesaw Gamepad, Hardware ID: %02x\n",
 		private->hardware_id);
@@ -248,24 +230,19 @@ static int seesaw_probe(struct i2c_client *client)
 		return err;
 	}
 
-	// Set Pin Mode to Input and enable pull-up resistors
-	{
-		unsigned char buf[] = { SEESAW_GPIO_BASE,
-					SEESAW_GPIO_DIRCLR_BULK,
-					(unsigned char)(BUTTON_MASK >> 24),
-					(unsigned char)(BUTTON_MASK >> 16),
-					(unsigned char)(BUTTON_MASK >> 8),
-					(unsigned char)BUTTON_MASK };
-		err = i2c_master_send(client, buf, sizeof(buf));
-		buf[1] = SEESAW_GPIO_PULLENSET;
-		err |= i2c_master_send(client, buf, sizeof(buf));
-		buf[1] = SEESAW_GPIO_BULK_SET;
-		err |= i2c_master_send(client, buf, sizeof(buf));
-		if (err < 0)
-			return err;
-		if (err != sizeof(buf))
-			return -EIO;
-	}
+	/* Set Pin Mode to input and enable pull-up resistors */
+	unsigned char pin_mode[] = { SEESAW_GPIO_BASE,	SEESAW_GPIO_DIRCLR_BULK,
+				     BUTTON_MASK >> 24, BUTTON_MASK >> 16,
+				     BUTTON_MASK >> 8,	BUTTON_MASK };
+	err = i2c_master_send(client, pin_mode, sizeof(pin_mode));
+	pin_mode[1] = SEESAW_GPIO_PULLENSET;
+	err |= i2c_master_send(client, pin_mode, sizeof(pin_mode));
+	pin_mode[1] = SEESAW_GPIO_BULK_SET;
+	err |= i2c_master_send(client, pin_mode, sizeof(pin_mode));
+	if (err < 0)
+		return err;
+	if (err != sizeof(pin_mode))
+		return -EIO;
 
 	return 0;
 }
@@ -280,8 +257,7 @@ static const struct of_device_id of_seesaw_match[] = {
 MODULE_DEVICE_TABLE(of, of_seesaw_match);
 #endif /* CONFIG_OF */
 
-static const struct i2c_device_id seesaw_id_table[] = { { KBUILD_MODNAME,
-							  0 },
+static const struct i2c_device_id seesaw_id_table[] = { { KBUILD_MODNAME, 0 },
 							{ /* Sentinel */ } };
 MODULE_DEVICE_TABLE(i2c, seesaw_id_table);
 
@@ -297,4 +273,4 @@ module_i2c_driver(seesaw_driver);
 
 MODULE_AUTHOR("Anshul Dalal <anshulusr@gmail.com>");
 MODULE_DESCRIPTION("Adafruit Mini I2C Gamepad driver");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
