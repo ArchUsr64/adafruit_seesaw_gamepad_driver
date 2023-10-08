@@ -8,11 +8,9 @@
 		__overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
-
-			seesaw_gamepad: seesaw_gamepad@50 {
+			joystick@50 {
 				compatible = "adafruit,seesaw_gamepad";
 				reg = <0x50>;
-				status = "okay";
 			};
 		};
 	};
